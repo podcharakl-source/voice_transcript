@@ -1,0 +1,6 @@
+{
+  "name": "ScribeAI",
+  "description": "High-fidelity M4A audio transcription powered by Gemini AI. Upload your audio files and get instant, accurate text transcripts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
