@@ -1,15 +1,26 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const ai = new GoogleGenAI({ 
+  apiKey: process.env.GEMINI_API_KEY || "",
+  httpOptions: {
+    headers: {
+      'User-Agent': 'aistudio-build',
+    }
+  }
+});
 
-export async function transcribeAudio(base64Data: string, mimeType: string): Promise<string> {
+export async function transcribeAudio(
+  base64Data: string, 
+  mimeType: string, 
+  model: string = "gemini-3.5-flash"
+): Promise<string> {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("Gemini API key is not configured. Please add it in the Secrets panel.");
   }
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: model,
       contents: [
         {
           parts: [

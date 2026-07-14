@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { transcribeAudio } from './services/transcriptionService';
+import ModelSelector from './components/ModelSelector';
+import { MODELS } from './modelsData';
 
 export default function App() {
   const [file, setFile] = useState<File | null>(null);
@@ -21,6 +23,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string>("gemini-3.5-flash");
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -75,13 +78,20 @@ export default function App() {
   const handleTranscribe = async () => {
     if (!file) return;
 
+    // Guard against specialized models (extra safety)
+    const activeModelInfo = MODELS.find(m => m.id === selectedModel);
+    if (activeModelInfo && !activeModelInfo.isSupported) {
+      setError(`The model '${activeModelInfo.name}' does not support audio file transcription. Please select a compatible multimodal model (e.g. Gemini 3.5 Flash) from the selector before proceeding.`);
+      return;
+    }
+
     setIsUploading(true);
     setError(null);
     setTranscript(null);
 
     try {
       const base64Data = await fileToBase64(file);
-      const result = await transcribeAudio(base64Data, 'audio/x-m4a');
+      const result = await transcribeAudio(base64Data, 'audio/x-m4a', selectedModel);
       setTranscript(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Transcription failed.");
@@ -168,172 +178,181 @@ export default function App() {
         </div>
 
         {/* Main Interface */}
-        <div id="main-content" className="space-y-8">
-          {!transcript && !isUploading && (
-            <motion.div 
-              id="upload-zone"
-              layout
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className={`relative group h-[400px] border-2 border-dashed rounded-3xl transition-all duration-500 flex flex-col items-center justify-center p-12 overflow-hidden
-                ${isDragging ? 'border-orange-500 bg-orange-500/5' : 'border-neutral-800 bg-neutral-900/40 hover:border-neutral-700'}
-              `}
-              onDragOver={onDragOver}
-              onDragLeave={onDragLeave}
-              onDrop={onDrop}
-            >
-              <input 
-                id="file-input"
-                type="file" 
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept=".m4a"
-                className="hidden" 
-              />
-              
-              <div className="relative z-20 text-center space-y-4">
-                <div className={`mx-auto w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-500 
-                  ${file ? 'bg-orange-600 scale-110' : 'bg-neutral-800 group-hover:bg-neutral-700'}`}
-                >
-                  {file ? <CheckCircle2 className="size-10 text-white" /> : <Upload className="size-10 text-neutral-400" />}
-                </div>
+        <div id="main-content" className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div className="lg:col-span-2 space-y-8">
+            {!transcript && !isUploading && (
+              <motion.div 
+                id="upload-zone"
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className={`relative group h-[400px] border-2 border-dashed rounded-3xl transition-all duration-500 flex flex-col items-center justify-center p-12 overflow-hidden
+                  ${isDragging ? 'border-orange-500 bg-orange-500/5' : 'border-neutral-800 bg-neutral-900/40 hover:border-neutral-700'}
+                `}
+                onDragOver={onDragOver}
+                onDragLeave={onDragLeave}
+                onDrop={onDrop}
+              >
+                <input 
+                  id="file-input"
+                  type="file" 
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept=".m4a"
+                  className="hidden" 
+                />
                 
-                <div>
-                  <h3 id="file-status" className="text-xl font-semibold mb-2">
-                    {file ? file.name : "Drop your M4A here"}
-                  </h3>
-                  <p className="text-neutral-500 text-sm">
-                    {file 
-                      ? `${(file.size / (1024 * 1024)).toFixed(2)} MB • Ready to transcribe` 
-                      : "or click to browse from your device"}
-                  </p>
-                </div>
-
-                {!file ? (
-                  <button 
-                    id="browse-btn"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="mt-4 px-8 py-3 bg-white text-black font-semibold rounded-full hover:bg-neutral-200 transition-all shadow-xl shadow-white/5 active:scale-95"
+                <div className="relative z-20 text-center space-y-4">
+                  <div className={`mx-auto w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-500 
+                    ${file ? 'bg-orange-600 scale-110' : 'bg-neutral-800 group-hover:bg-neutral-700'}`}
                   >
-                    Select File
-                  </button>
-                ) : (
-                  <div className="flex gap-4 justify-center mt-6">
-                    <button 
-                      id="reset-btn"
-                      onClick={handleReset}
-                      className="px-6 py-3 border border-neutral-700 text-neutral-300 font-semibold rounded-full hover:bg-neutral-800 transition-all active:scale-95 flex items-center gap-2"
-                    >
-                      <RotateCcw className="size-4" /> Reset
-                    </button>
-                    <button 
-                      id="transcribe-btn"
-                      onClick={handleTranscribe}
-                      className="px-8 py-3 bg-orange-600 text-white font-semibold rounded-full hover:bg-orange-500 transition-all shadow-xl shadow-orange-600/20 active:scale-95 flex items-center gap-2"
-                    >
-                      Transcribe Now <Waves className="size-4" />
-                    </button>
+                    {file ? <CheckCircle2 className="size-10 text-white" /> : <Upload className="size-10 text-neutral-400" />}
                   </div>
-                )}
-              </div>
-
-
-              {/* Decorative elements */}
-              <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            </motion.div>
-          )}
-
-          {/* Loading State */}
-          <AnimatePresence>
-            {isUploading && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="bg-neutral-900/60 backdrop-blur-xl border border-neutral-800 rounded-3xl p-12 text-center"
-              >
-                <div className="flex flex-col items-center justify-center space-y-6">
-                  <div className="relative">
-                    <div className="w-16 h-16 border-4 border-neutral-800 rounded-full border-t-orange-600 animate-spin" />
-                    <Loader2 className="absolute inset-0 m-auto text-orange-600 size-6" />
-                  </div>
+                  
                   <div>
-                    <h3 className="text-xl font-semibold mb-2">Transcribing Audio</h3>
-                    <motion.div
-                      key={Math.floor(Date.now() / 3000)}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-neutral-500 text-sm h-6 font-mono"
-                    >
-                      {messages[Math.floor(Date.now() / 3000) % messages.length]}
-                    </motion.div>
+                    <h3 id="file-status" className="text-xl font-semibold mb-2">
+                      {file ? file.name : "Drop your M4A here"}
+                    </h3>
+                    <p className="text-neutral-500 text-sm">
+                      {file 
+                        ? `${(file.size / (1024 * 1024)).toFixed(2)} MB • Ready to transcribe` 
+                        : "or click to browse from your device"}
+                    </p>
                   </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
-          {/* Error Message */}
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3 text-red-400"
-            >
-              <AlertCircle className="size-5" />
-              <p className="text-sm font-medium">{error}</p>
-            </motion.div>
-          )}
-
-          {/* Results Section */}
-          <AnimatePresence>
-            {transcript && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-neutral-900/40 backdrop-blur-xl border border-neutral-800 rounded-3xl flex flex-col overflow-hidden"
-              >
-                <div className="p-6 border-b border-neutral-800 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center">
-                      <FileAudio className="text-orange-600 size-5" />
+                  {!file ? (
+                    <button 
+                      id="browse-btn"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="mt-4 px-8 py-3 bg-white text-black font-semibold rounded-full hover:bg-neutral-200 transition-all shadow-xl shadow-white/5 active:scale-95"
+                    >
+                      Select File
+                    </button>
+                  ) : (
+                    <div className="flex gap-4 justify-center mt-6">
+                      <button 
+                        id="reset-btn"
+                        onClick={handleReset}
+                        className="px-6 py-3 border border-neutral-700 text-neutral-300 font-semibold rounded-full hover:bg-neutral-800 transition-all active:scale-95 flex items-center gap-2"
+                      >
+                        <RotateCcw className="size-4" /> Reset
+                      </button>
+                      <button 
+                        id="transcribe-btn"
+                        onClick={handleTranscribe}
+                        className="px-8 py-3 bg-orange-600 text-white font-semibold rounded-full hover:bg-orange-500 transition-all shadow-xl shadow-orange-600/20 active:scale-95 flex items-center gap-2"
+                      >
+                        Transcribe Now <Waves className="size-4" />
+                      </button>
                     </div>
-                    <span className="font-semibold text-neutral-200 truncate max-w-[200px] md:max-w-xs">{file?.name}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={handleCopy}
-                      className={`p-2 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium
-                        ${isCopied ? 'bg-green-600/20 text-green-400' : 'bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-700'}
-                      `}
-                    >
-                      <Copy className="size-4" />
-                      {isCopied ? "Copied" : "Copy"}
-                    </button>
-                    <button 
-                      onClick={handleDownload}
-                      className="p-2 bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded-lg transition-colors"
-                    >
-                      <Download className="size-4" />
-                    </button>
-                    <button 
-                      onClick={handleReset}
-                      className="p-2 bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded-lg transition-colors"
-                    >
-                      <RotateCcw className="size-4" />
-                    </button>
-                  </div>
+                  )}
                 </div>
-                
-                <div className="p-8 max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-700">
-                  <div className="prose prose-invert prose-orange max-w-none">
-                    <Markdown>{transcript}</Markdown>
-                  </div>
-                </div>
+
+
+                {/* Decorative elements */}
+                <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               </motion.div>
             )}
-          </AnimatePresence>
+
+            {/* Loading State */}
+            <AnimatePresence>
+              {isUploading && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="bg-neutral-900/60 backdrop-blur-xl border border-neutral-800 rounded-3xl p-12 text-center"
+                >
+                  <div className="flex flex-col items-center justify-center space-y-6">
+                    <div className="relative">
+                      <div className="w-16 h-16 border-4 border-neutral-800 rounded-full border-t-orange-600 animate-spin" />
+                      <Loader2 className="absolute inset-0 m-auto text-orange-600 size-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold mb-2">Transcribing Audio</h3>
+                      <motion.div
+                        key={Math.floor(Date.now() / 3000)}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-neutral-500 text-sm h-6 font-mono"
+                      >
+                        {messages[Math.floor(Date.now() / 3000) % messages.length]}
+                      </motion.div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Error Message */}
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3 text-red-400 font-sans"
+              >
+                <AlertCircle className="size-5 shrink-0" />
+                <p className="text-sm font-medium">{error}</p>
+              </motion.div>
+            )}
+
+            {/* Results Section */}
+            <AnimatePresence>
+              {transcript && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-neutral-900/40 backdrop-blur-xl border border-neutral-800 rounded-3xl flex flex-col overflow-hidden"
+                >
+                  <div className="p-6 border-b border-neutral-800 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center">
+                        <FileAudio className="text-orange-600 size-5" />
+                      </div>
+                      <span className="font-semibold text-neutral-200 truncate max-w-[200px] md:max-w-xs">{file?.name}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={handleCopy}
+                        className={`p-2 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium
+                          ${isCopied ? 'bg-green-600/20 text-green-400' : 'bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-700'}
+                        `}
+                      >
+                        <Copy className="size-4" />
+                        {isCopied ? "Copied" : "Copy"}
+                      </button>
+                      <button 
+                        onClick={handleDownload}
+                        className="p-2 bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded-lg transition-colors"
+                      >
+                        <Download className="size-4" />
+                      </button>
+                      <button 
+                        onClick={handleReset}
+                        className="p-2 bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded-lg transition-colors"
+                      >
+                        <RotateCcw className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="p-8 max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-700">
+                    <div className="prose prose-invert prose-orange max-w-none">
+                      <Markdown>{transcript}</Markdown>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div id="model-picker-container" className="lg:col-span-1">
+            <ModelSelector 
+              selectedModel={selectedModel}
+              onSelectModel={setSelectedModel}
+            />
+          </div>
         </div>
 
         {/* Footer info */}
