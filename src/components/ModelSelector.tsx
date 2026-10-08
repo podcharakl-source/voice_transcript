@@ -62,13 +62,20 @@ export default function ModelSelector({ selectedModel, onSelectModel }: ModelSel
               <Bot className="size-4 text-orange-500" />
               {activeModel.name}
             </h4>
-            <span className={`text-[10px] px-2 py-0.5 rounded-md font-mono ${
-              activeModel.isSupported 
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                : 'bg-red-500/10 text-red-400 border border-red-500/20'
-            }`}>
-              {activeModel.badge}
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              {activeModel.requiresPaid && (
+                <span className="text-[10px] px-2 py-0.5 rounded-md font-mono bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                  Paid Plan
+                </span>
+              )}
+              <span className={`text-[10px] px-2 py-0.5 rounded-md font-mono ${
+                activeModel.isSupported 
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
+              }`}>
+                {activeModel.badge}
+              </span>
+            </div>
           </div>
           <p className="text-xs text-neutral-400 leading-relaxed font-sans">
             {activeModel.desc}
@@ -155,9 +162,14 @@ export default function ModelSelector({ selectedModel, onSelectModel }: ModelSel
                     {model.name}
                   </span>
                   
+                  {model.requiresPaid && (
+                    <span className="text-[9px] bg-purple-950 text-purple-300 px-1.5 rounded font-mono border border-purple-900/30 shrink-0">
+                      Paid
+                    </span>
+                  )}
                   {!model.isSupported && (
                     <span className="text-[9px] bg-red-950 text-red-400 px-1.5 rounded font-mono border border-red-900/30 shrink-0">
-                      Spec
+                      Non-Audio
                     </span>
                   )}
                 </div>

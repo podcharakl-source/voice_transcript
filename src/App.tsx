@@ -91,7 +91,10 @@ export default function App() {
 
     try {
       const base64Data = await fileToBase64(file);
-      const result = await transcribeAudio(base64Data, 'audio/x-m4a', selectedModel);
+      const mimeType = file.type && file.type !== '' 
+        ? file.type 
+        : (file.name.toLowerCase().endsWith('.m4a') ? 'audio/x-m4a' : 'audio/mp3');
+      const result = await transcribeAudio(base64Data, mimeType, selectedModel);
       setTranscript(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Transcription failed.");
